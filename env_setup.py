@@ -1,10 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from the .env file
-load_dotenv()
 
-# Initialize the config dictionary to store environment variables
+load_dotenv()
 config = {
     "google_creds": os.getenv("google_creds"),
     "huggingface_api_key": os.getenv("huggingface_api_key"),
