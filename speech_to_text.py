@@ -2,7 +2,7 @@ import time
 import speech_recognition as sr
 import pyttsx3
 
-# Initialize recognizer
+# recognizer
 r = sr.Recognizer()
 
 def transcribe_with_chunks():
@@ -20,7 +20,7 @@ def transcribe_with_chunks():
     while True:
         try:
             with sr.Microphone() as source:
-                # Adjust for ambient noise
+                # ambient noise
                 r.adjust_for_ambient_noise(source, duration=0.2)
                 
                 if not is_active:
@@ -45,7 +45,7 @@ def transcribe_with_chunks():
                 current_chunk.append(text)
                 print(f"Speaker: {text}")
 
-                # Detect pause (3 seconds) to finalize a chunk
+                # pause (3 seconds) to finalize a chunk
                 if time.time() - chunk_start_time > 3:
                     if current_chunk:
                         chunks.append(" ".join(current_chunk))
