@@ -8,6 +8,7 @@ Sentiment Analysis: Detects the sentiment (Positive, Negative, or Neutral) for e
 Conversation Chunking: The speech is segmented into chunks based on pauses (3 seconds or more).
 Conversation Summary: Summarizes the entire conversation after the call ends.
 Google Sheets Integration: Stores conversation chunks, sentiment analysis results, and a summary in a Google Sheet for easy tracking and review.
+
 Requirements
 To set up and run this project, you will need the following:
 
@@ -28,19 +29,14 @@ pyttex3: For LaTeX rendering (if applicable).
 Installation
 Clone this repository to your local machine:
 
-bash
-Copy code
 git clone https://github.com/yourusername/real-time-ai-sales-call-assistant.git
 Navigate to the project directory:
 
-bash
-Copy code
 cd real-time-ai-sales-call-assistant
 Install the required Python libraries:
 
-bash
-Copy code
 pip install -r requirements.txt
+
 Set up Google Sheets API credentials and Hugging Face API credentials. Follow the instructions in the respective documentation to obtain your API keys.
 
 Configuration
@@ -52,20 +48,8 @@ Share the target Google Sheet with the email ID mentioned in your credentials.js
 Hugging Face API Configuration
 Create an account on Hugging Face.
 
-Obtain your Hugging Face API key from the account settings.
-
-Create a file named config.py in your project directory and add the following content:
-
-python
-Copy code
-config = {
-    "huggingface_api_key": "your_hugging_face_api_key"
-}
-Usage
 Run the script to start analyzing sales calls:
 
-bash
-Copy code
 python sales_call_assistant.py
 During the call, say “start recording” to begin, and “stop recording” to end the session.
 
