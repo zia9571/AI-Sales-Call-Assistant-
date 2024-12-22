@@ -1,40 +1,14 @@
 import time
 import speech_recognition as sr
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-from huggingface_hub import login
-from env_setup import config
-
-# Log in to Hugging Face with the API key (if required)
-huggingface_api_key = config["huggingface_api_key"]
-login(token=huggingface_api_key)
-
-# Load the sentiment analysis model and tokenizer from Hugging Face
-model_name = "distilbert-base-uncased"
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-# Initialize the sentiment analysis pipeline
-sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+import pyttsx3
 
 # Initialize recognizer
 r = sr.Recognizer()
 
-def analyze_sentiment(text):
-    """Analyze sentiment of the text using Hugging Face model."""
-    result = sentiment_analyzer(text)[0]
-    sentiment = result['label']
-    score = result['score']
-    
-    # Normalize the sentiment label (add NEUTRAL if necessary)
-    if sentiment == 'LABEL_0':  # Replace 'LABEL_0' with actual NEUTRAL label if necessary
-        sentiment = 'NEUTRAL'
-    
-    return sentiment, score
-
 def transcribe_with_chunks():
     """
     Transcribe audio input in real-time and create chunks based on pauses.
-    Returns a list of chunks with their sentiment analysis.
+    Returns a list of chunks (each chunk is a string of transcribed text).
     """
     chunks = []
     current_chunk = []
@@ -65,9 +39,7 @@ def transcribe_with_chunks():
                 if "stop recording" in text:
                     print("Recording stopped")
                     if current_chunk:
-                        chunk_text = " ".join(current_chunk)
-                        sentiment, score = analyze_sentiment(chunk_text)
-                        chunks.append((chunk_text, sentiment, score))
+                        chunks.append(" ".join(current_chunk))
                     break
 
                 current_chunk.append(text)
@@ -76,10 +48,7 @@ def transcribe_with_chunks():
                 # Detect pause (3 seconds) to finalize a chunk
                 if time.time() - chunk_start_time > 3:
                     if current_chunk:
-                        chunk_text = " ".join(current_chunk)
-                        sentiment, score = analyze_sentiment(chunk_text)
-                        chunks.append((chunk_text, sentiment, score))
-                        print(f"Chunk saved: {chunk_text} | Sentiment: {sentiment} | Score: {score}")
+                        chunks.append(" ".join(current_chunk))
                         current_chunk = []
 
                 chunk_start_time = time.time()
@@ -94,17 +63,5 @@ def transcribe_with_chunks():
 if __name__ == "__main__":
     chunks = transcribe_with_chunks()
     print("Final Chunks:")
-
-    total_text = ""
-    sentiment_scores = []
-
-    for i, (chunk, sentiment, score) in enumerate(chunks, 1):
-        print(f"Chunk {i}: {chunk} | Sentiment: {sentiment} | Score: {score}")
-        total_text += chunk + " "
-        sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
-
-    # Summarize conversation and calculate overall sentiment
-    overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else ("NEGATIVE" if sum(sentiment_scores) < 0 else "NEUTRAL")
-    print("\nConversation Summary:")
-    print(total_text.strip())
-    print(f"Overall Sentiment: {overall_sentiment}")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"Chunk {i}: {chunk}")
