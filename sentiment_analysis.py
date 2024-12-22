@@ -5,19 +5,19 @@ from transformers import pipeline, AutoModelForSequenceClassification, AutoToken
 from huggingface_hub import login
 from env_setup import config
 
-# Log in to Hugging Face with the API key (if required)
+# Log in 
 huggingface_api_key = config["huggingface_api_key"]
 login(token=huggingface_api_key)
 
-# Use the multilingual sentiment analysis model
+#multilingual sentiment analysis model
 model_name = "tabularisai/multilingual-sentiment-analysis"
 model = AutoModelForSequenceClassification.from_pretrained(model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# Initialize the sentiment analysis pipeline
+# sentiment analysis pipeline
 sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
 
-# Initialize recognizer
+# recognizer
 r = sr.Recognizer()
 
 def analyze_sentiment(text):
@@ -26,16 +26,16 @@ def analyze_sentiment(text):
     sentiment = result['label']
     score = result['score']
     
-    # Map the sentiment to one of the five categories
+    # sentiment mapping
     sentiment_map = {
-        "LABEL_0": "VERY NEGATIVE",  # Adjust the label according to the model output
+        "LABEL_0": "VERY NEGATIVE",  
         "LABEL_1": "NEGATIVE",
         "LABEL_2": "NEUTRAL",
         "LABEL_3": "POSITIVE",
         "LABEL_4": "VERY POSITIVE"
     }
     
-    # Get sentiment label and score
+    #  sentiment label and score
     sentiment = sentiment_map.get(result['label'], "NEUTRAL")
     
     return sentiment, score
@@ -55,7 +55,7 @@ def transcribe_with_chunks():
     while True:
         try:
             with sr.Microphone() as source:
-                # Adjust for ambient noise
+                # ambient noise
                 r.adjust_for_ambient_noise(source, duration=0.2)
                 
                 if not is_active:
@@ -82,7 +82,7 @@ def transcribe_with_chunks():
                 current_chunk.append(text)
                 print(f"Speaker: {text}")
 
-                # Detect pause (3 seconds) to finalize a chunk
+                # pause (3 seconds) to finalize a chunk
                 if time.time() - chunk_start_time > 3:
                     if current_chunk:
                         chunk_text = " ".join(current_chunk)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         total_text += chunk + " "
         sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
 
-    # Summarize conversation and calculate overall sentiment
+    # summarize and calculate overall sentiment
     overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else ("NEGATIVE" if sum(sentiment_scores) < 0 else "NEUTRAL")
     print("\nConversation Summary:")
     print(total_text.strip())
