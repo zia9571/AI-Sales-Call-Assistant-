@@ -85,7 +85,3 @@ This project develops a real-time AI-powered assistant designed to enhance sales
    - **Sentiment for each Chunk**
    - **Overall Sentiment**
    - **Conversation Summary**
-
-## Example Output
-
-### Conversation Chunks and Sentiments:
