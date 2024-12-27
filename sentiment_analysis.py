@@ -22,18 +22,16 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
 
 # Vosk Speech Recognition Model
-vosk_model_path = os.getenv("vosk_model_path")
+vosk_model_path = config["vosk_model_path"]
 
 if not vosk_model_path:
-    print("Error: vosk_model_path is not set in the .env file.")
-    exit()
+    raise ValueError("Error: vosk_model_path is not set in the .env file.")
 
 try:
     vosk_model = Model(vosk_model_path)
     print("Vosk model loaded successfully.")
 except Exception as e:
-    print(f"Failed to load Vosk model: {e}")
-    exit()
+    raise ValueError(f"Failed to load Vosk model: {e}")
 
 recognizer = KaldiRecognizer(vosk_model, 16000)
 audio = pyaudio.PyAudio()
@@ -59,70 +57,52 @@ def analyze_sentiment(text):
     sentiment = sentiment_map.get(result['label'], "NEUTRAL")
     return sentiment, result['score']
 
-print("Say 'start listening' to begin transcription and sentiment analysis. Say 'stop listening' to stop.")
+def transcribe_with_chunks():
+    """Perform real-time transcription with sentiment analysis."""
+    print("Say 'start listening' to begin transcription. Say 'stop listening' to stop.")
+    is_listening = False
+    chunks = []
+    current_chunk = []
+    chunk_start_time = time.time()
 
-is_listening = False
-chunks = []
-current_chunk = []
-chunk_start_time = time.time()
+    try:
+        while True:
+            data = stream.read(4000, exception_on_overflow=False)
 
-try:
-    while True:
-        data = stream.read(4000, exception_on_overflow=False)
+            if recognizer.AcceptWaveform(data):
+                result = recognizer.Result()
+                text = json.loads(result)["text"]
 
-        if recognizer.AcceptWaveform(data):
-            result = recognizer.Result()
-            text = json.loads(result)["text"]
-
-            # Command to start/stop listening
-            if "start listening" in text.lower():
-                is_listening = True
-                print("Listening started. Speak into the microphone.")
-                continue
-            elif "stop listening" in text.lower():
-                is_listening = False
-                print("Listening stopped. Say 'start listening' to resume.")
-                if current_chunk:
-                    chunk_text = " ".join(current_chunk)
-                    sentiment, score = analyze_sentiment(chunk_text)
-                    chunks.append((chunk_text, sentiment, score))
-                    current_chunk = []
-                continue
-
-            # Process transcription if actively listening
-            if is_listening:
-                print(f"Transcription: {text}")
-                current_chunk.append(text)
-
-                # Check for pauses to finalize a chunk
-                if time.time() - chunk_start_time > 3:
+                if "start listening" in text.lower():
+                    is_listening = True
+                    print("Listening started. Speak into the microphone.")
+                    continue
+                elif "stop listening" in text.lower():
+                    is_listening = False
+                    print("Listening stopped.")
                     if current_chunk:
                         chunk_text = " ".join(current_chunk)
                         sentiment, score = analyze_sentiment(chunk_text)
                         chunks.append((chunk_text, sentiment, score))
-                        print(f"Chunk saved: {chunk_text} | Sentiment: {sentiment} | Score: {score}")
                         current_chunk = []
+                    continue
 
-                chunk_start_time = time.time()
+                if is_listening:
+                    print(f"Transcription: {text}")
+                    current_chunk.append(text)
 
-except KeyboardInterrupt:
-    print("\nExiting...")
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
+                    if time.time() - chunk_start_time > 3:
+                        if current_chunk:
+                            chunk_text = " ".join(current_chunk)
+                            sentiment, score = analyze_sentiment(chunk_text)
+                            chunks.append((chunk_text, sentiment, score))
+                            print(f"Chunk: {chunk_text} | Sentiment: {sentiment} | Score: {score}")
+                            current_chunk = []
+                        chunk_start_time = time.time()
 
-# Print the final results
-print("\nFinal Chunks:")
-
-total_text = ""
-sentiment_scores = []
-
-for i, (chunk, sentiment, score) in enumerate(chunks, 1):
-    print(f"Chunk {i}: {chunk} | Sentiment: {sentiment} | Score: {score}")
-    total_text += chunk + " "
-    sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
-
-overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else ("NEGATIVE" if sum(sentiment_scores) < 0 else "NEUTRAL")
-print("\nConversation Summary:")
-print(total_text.strip())
-print(f"Overall Sentiment: {overall_sentiment}")
+    except KeyboardInterrupt:
+        print("\nExiting...")
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+        return chunks
