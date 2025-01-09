@@ -1,14 +1,22 @@
 from sentiment_analysis import transcribe_with_chunks
 from google_sheets import store_data_in_sheet
 from env_setup import config
-from product_recommender import get_recommendations  
+from product_recommender import get_recommendations
+from objection_handler import load_objections
+from google_sheets import store_data_in_sheet
 
 def main():
-    chunks = transcribe_with_chunks()  
+    # Load objections at the start of the script
+    objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
+    objections_dict = load_objections(objections_file_path)
+
+    # Call the transcription function which now includes objection handling
+    transcribed_chunks = transcribe_with_chunks(objections_dict)
+
     total_text = ""
     sentiment_scores = []
 
-    for chunk, sentiment, score in chunks:
+    for chunk, sentiment, score in transcribed_chunks:
         if chunk.strip():  
             total_text += chunk + " "  
             sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
@@ -20,33 +28,19 @@ def main():
                 "trousers", "jeans", "chinos", "joggers", "sweatpants",
                 "skirt", "denim skirt", "maxi skirt", "pencil skirt",
                 "shoes", "running shoes", "high heels", "loafers", "sandals", "boots", "sneakers",
-                "sunglasses", "scarf", "handbag", "wallet", "belt", "earrings", "hat",
-                "jacket", "blazer", "coat", "raincoat", "sweater",
-                "cotton", "denim", "wool", "leather", "polyester", "satin", "velvet",
-                "white", "black", "red", "blue", "green", "yellow", "pink", "beige", "gray", "brown", "purple",
                 "socks", "luggage", "bag"  # Updated keyword list
             ]):
+                print(f"Recommendations for chunk: '{chunk}'")
                 recommendations = get_recommendations(chunk)
-                if recommendations:
-                    print(f"\nRecommendations for chunk: '{chunk}'")
-                    for idx, rec in enumerate(recommendations, 1):
-                        print(f"{idx}. {rec}")
-                else:
-                    print("No recommendations found.")
-            else:
-                print(f"\nNo relevant keywords found in the chunk: '{chunk}'. Skipping recommendations.")
+                for idx, rec in enumerate(recommendations, 1):
+                    print(f"{idx}. {rec}")
 
-            print(f"Chunk: '{chunk}' | Sentiment: {sentiment} | Score: {score}")
-
-    overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else (
-        "NEGATIVE" if sum(sentiment_scores) < 0 else "NEUTRAL"
-    )
-
-    print("\nConversation Summary:")
-    print(total_text.strip())
+    overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else "NEGATIVE"
+    print(f"Conversation Summary: {total_text.strip()}")
     print(f"Overall Sentiment: {overall_sentiment}")
 
-    store_data_in_sheet(config["google_sheet_id"], chunks, total_text.strip(), overall_sentiment)
+    # Store data in Google Sheets
+    store_data_in_sheet(config["google_sheet_id"], transcribed_chunks, total_text.strip(), overall_sentiment)
 
 if __name__ == "__main__":
     main()
