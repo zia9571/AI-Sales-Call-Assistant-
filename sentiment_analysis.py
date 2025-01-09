@@ -7,7 +7,7 @@ import pyaudio
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 from huggingface_hub import login
 from env_setup import config
-from product_recommender import get_recommendations 
+from product_recommender import get_recommendations  # Import the recommendation function
 
 # Load environment variables
 load_dotenv()
@@ -44,9 +44,18 @@ stream = audio.open(format=pyaudio.paInt16,
                     frames_per_buffer=4000)
 stream.start_stream()
 
-# Function to analyze sentiment
-# Add this import at the top of your file
-from product_recommender import get_recommendations  # Import the recommendation function
+# Expanded Keyword List
+keywords = [
+    "dress", "floral dress", "maxi dress", "velvet dress", "sundress",
+    "shirt", "casual shirt", "formal shirt", "t-shirt", "pajama set", "blouse",
+    "trousers", "jeans", "chinos", "joggers", "sweatpants",
+    "skirt", "denim skirt", "maxi skirt", "pencil skirt",
+    "shoes", "running shoes", "high heels", "loafers", "sandals", "boots", "sneakers",
+    "sunglasses", "scarf", "handbag", "wallet", "belt", "earrings", "hat",
+    "jacket", "blazer", "coat", "raincoat", "sweater",
+    "cotton", "denim", "wool", "leather", "polyester", "satin", "velvet",
+    "white", "black", "red", "blue", "green", "yellow", "pink", "beige", "gray", "brown", "purple"
+]
 
 # Function to analyze sentiment
 def analyze_sentiment(text):
@@ -108,7 +117,7 @@ def transcribe_with_chunks():
                             print(f"Chunk: {chunk_text} | Sentiment: {sentiment} | Score: {score}")
 
                             # Check for relevant keywords and get recommendations
-                            if any(keyword in chunk_text.lower() for keyword in ["dress", "shoes", "clothes", "apparel", "fashion"]):
+                            if any(keyword in chunk_text.lower() for keyword in keywords):
                                 recommendations = get_recommendations(chunk_text)
                                 if recommendations:
                                     print(f"Recommendations for chunk: '{chunk_text}'")
