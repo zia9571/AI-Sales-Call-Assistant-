@@ -8,6 +8,7 @@ from transformers import pipeline, AutoModelForSequenceClassification, AutoToken
 from huggingface_hub import login
 from env_setup import config
 from product_recommender import get_recommendations  # Import the recommendation function
+from objection_handler import load_objections, check_objections
 
 # Load environment variables
 load_dotenv()
@@ -71,7 +72,30 @@ def analyze_sentiment(text):
     sentiment = sentiment_map.get(result['label'], "NEUTRAL")
     return sentiment, result['score']
 
-def transcribe_with_chunks():
+objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
+objections_dict = load_objections(objections_file_path)
+
+# Existing imports and code...
+
+# Function to analyze sentiment
+def analyze_sentiment(text):
+    """Analyze sentiment of the text using Hugging Face model."""
+    result = sentiment_analyzer(text)[0]
+    sentiment_map = {
+        "LABEL_0": "VERY NEGATIVE",
+        "LABEL_1": "NEGATIVE",
+        "LABEL_2": "NEUTRAL",
+        "LABEL_3": "POSITIVE",
+        "LABEL_4": "VERY POSITIVE"
+    }
+    sentiment = sentiment_map.get(result['label'], "NEUTRAL")
+    return sentiment, result['score']
+
+# Load objections
+objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
+objections_dict = load_objections(objections_file_path)
+
+def transcribe_with_chunks(objections_dict):
     """Perform real-time transcription with sentiment analysis."""
     print("Say 'start listening' to begin transcription. Say 'stop listening' to stop.")
     is_listening = False
@@ -83,12 +107,10 @@ def transcribe_with_chunks():
         while True:
             data = stream.read(4000, exception_on_overflow=False)
 
-            # Check if recognizer accepts the waveform data
             if recognizer.AcceptWaveform(data):
                 result = recognizer.Result()
                 text = json.loads(result)["text"]
 
-                # Handle start and stop listening commands
                 if "start listening" in text.lower():
                     is_listening = True
                     print("Listening started. Speak into the microphone.")
@@ -103,12 +125,16 @@ def transcribe_with_chunks():
                         current_chunk = []
                     continue
 
-                # If listening, process transcription and analyze sentiment
                 if is_listening:
                     print(f"Transcription: {text}")
                     current_chunk.append(text)
 
-                    # If silence or a 3-second threshold is met, process the chunk
+                    # Check for objections in the current chunk
+                    objection_responses = check_objections(text, objections_dict)
+                    for objection, response in objection_responses:
+                        print(f"Objection detected: '{objection}'")
+                        print(f"Suggested response: {response}")
+
                     if time.time() - chunk_start_time > 3:
                         if current_chunk:
                             chunk_text = " ".join(current_chunk)
@@ -134,11 +160,11 @@ def transcribe_with_chunks():
     except KeyboardInterrupt:
         print("\nExiting...")
         stream.stop_stream()
-        stream.close()
-        audio.terminate()
-        return chunks
 
-# Call the transcribe_with_chunks function to start the process
+    # Ensure to return the chunks at the end of the function
+    return chunks
+
+# Add this block to allow running the script directly
 if __name__ == "__main__":
-    transcribed_chunks = transcribe_with_chunks()
+    transcribed_chunks = transcribe_with_chunks(objections_dict)
     print("Final transcriptions and sentiments:", transcribed_chunks)
