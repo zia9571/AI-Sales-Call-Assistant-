@@ -1,11 +1,14 @@
 from sentiment_analysis import transcribe_with_chunks
 from google_sheets import store_data_in_sheet
 from env_setup import config
-from product_recommender import get_recommendations
-from objection_handler import load_objections
-from google_sheets import store_data_in_sheet
+from product_recommender import ProductRecommender
+from objection_handler import load_objections, ObjectionHandler
 
 def main():
+    # Load objections and products
+    product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+    objection_handler = ObjectionHandler(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
+
     # Load objections at the start of the script
     objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
     objections_dict = load_objections(objections_file_path)
@@ -18,26 +21,28 @@ def main():
 
     for chunk, sentiment, score in transcribed_chunks:
         if chunk.strip():  
-            total_text += chunk + " "  
+            total_text += chunk + " "  # Accumulate the conversation text
             sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
 
-            # Check for relevant keywords using the updated list
-            if any(keyword in chunk.lower() for keyword in [
-                "dress", "floral dress", "maxi dress", "velvet dress", "sundress",
-                "shirt", "casual shirt", "formal shirt", "t-shirt", "pajama set", "blouse",
-                "trousers", "jeans", "chinos", "joggers", "sweatpants",
-                "skirt", "denim skirt", "maxi skirt", "pencil skirt",
-                "shoes", "running shoes", "high heels", "loafers", "sandals", "boots", "sneakers",
-                "socks", "luggage", "bag"  # Updated keyword list
-            ]):
+            # Check for product recommendations
+            recommendations = product_recommender.get_recommendations(chunk)
+            if recommendations:
                 print(f"Recommendations for chunk: '{chunk}'")
-                recommendations = get_recommendations(chunk)
                 for idx, rec in enumerate(recommendations, 1):
                     print(f"{idx}. {rec}")
 
+            # Check for objections
+            objection_responses = objection_handler.handle_objection(chunk)
+            if objection_responses:
+                for response in objection_responses:
+                    print(f"Objection Response: {response}")
+
+    # Determine overall sentiment
     overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else "NEGATIVE"
-    print(f"Conversation Summary: {total_text.strip()}")
     print(f"Overall Sentiment: {overall_sentiment}")
+
+    # Generate a summary of the conversation
+    print(f"Conversation Summary: {total_text.strip()}")
 
     # Store data in Google Sheets
     store_data_in_sheet(config["google_sheet_id"], transcribed_chunks, total_text.strip(), overall_sentiment)
