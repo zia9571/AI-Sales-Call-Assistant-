@@ -1,30 +1,40 @@
 import pandas as pd
-import string
+from sentence_transformers import SentenceTransformer
+import faiss
 
 def load_objections(file_path):
-    """Load objections and responses from a CSV file into a dictionary."""
-    objections_df = pd.read_csv(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
-    objections_dict = dict(zip(objections_df['Customer Objection'], objections_df['Salesperson Response']))
-    return objections_dict
-
-def normalize_text(text):
-    """Normalize the text by converting to lowercase and removing punctuation."""
-    return text.lower().translate(str.maketrans('', '', string.punctuation))
+    """Load objections from a CSV file into a dictionary."""
+    try:
+        objections_df = pd.read_csv(file_path)
+        objections_dict = {}
+        for index, row in objections_df.iterrows():
+            objections_dict[row['Customer Objection']] = row['Salesperson Response']
+        return objections_dict
+    except Exception as e:
+        print(f"Error loading objections: {e}")
+        return {}
 
 def check_objections(text, objections_dict):
-    """Check if any objections are present in the text and return the corresponding response."""
+    """Check for objections in the given text and return responses."""
     responses = []
-    normalized_text = normalize_text(text)  # Normalize the transcription text
-
-    # Check for specific keywords related to budget concerns
-    budget_keywords = ["budget", "cost", "price", "expensive", "too much", "afford", "financial"]
-    if any(keyword in normalized_text for keyword in budget_keywords):
-        responses.append(("I don't have the budget for this", "I understand. Would it help if we could break the payment into more manageable installments?"))
-
-    # Check against the objections in the dictionary
     for objection, response in objections_dict.items():
-        normalized_objection = normalize_text(objection)  # Normalize the objection
-        if normalized_objection in normalized_text:  # Check for the objection in normalized text
-            responses.append((objection, response))
-
+        if objection.lower() in text.lower():
+            responses.append(response)
     return responses
+
+class ObjectionHandler:
+    def __init__(self, objection_data_path):
+        self.data = pd.read_csv(objection_data_path)
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embeddings = self.model.encode(self.data['Customer Objection'].tolist())
+        self.index = faiss.IndexFlatL2(self.embeddings.shape[1])
+        self.index.add(self.embeddings)
+
+    def handle_objection(self, query, top_n=1):
+        """Handle objections using embeddings."""
+        query_embedding = self.model.encode([query])
+        distances, indices = self.index.search(query_embedding, top_n)
+        responses = []
+        for i in indices[0]:
+            responses.append(self.data.iloc[i]['Salesperson Response'])
+        return responses
