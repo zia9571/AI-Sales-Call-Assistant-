@@ -2,40 +2,50 @@ from sentiment_analysis import transcribe_with_chunks
 from google_sheets import store_data_in_sheet
 from env_setup import config
 from product_recommender import ProductRecommender
-from objection_handler import load_objections, ObjectionHandler
+from objection_handler import ObjectionHandler, load_objections  # Ensure load_objections is imported
+from sentence_transformers import SentenceTransformer
 
 def main():
-    # Load objections and products
-    product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
-    objection_handler = ObjectionHandler(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
-
-    # Load objections at the start of the script
+    # Load objections data
     objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
     objections_dict = load_objections(objections_file_path)
 
-    # Call the transcription function which now includes objection handling
+    # Initialize handlers and model
+    product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+    objection_handler = ObjectionHandler(objections_file_path)
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+
+    # Call the transcription function
     transcribed_chunks = transcribe_with_chunks(objections_dict)
 
     total_text = ""
     sentiment_scores = []
+    processed_chunks = []  # Store chunks with their real-time processing results
 
     for chunk, sentiment, score in transcribed_chunks:
         if chunk.strip():  
-            total_text += chunk + " "  # Accumulate the conversation text
+            total_text += chunk + " "
             sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
 
-            # Check for product recommendations
-            recommendations = product_recommender.get_recommendations(chunk)
-            if recommendations:
-                print(f"Recommendations for chunk: '{chunk}'")
-                for idx, rec in enumerate(recommendations, 1):
-                    print(f"{idx}. {rec}")
-
-            # Check for objections
-            objection_responses = objection_handler.handle_objection(chunk)
-            if objection_responses:
-                for response in objection_responses:
-                    print(f"Objection Response: {response}")
+            # Get embeddings for similarity check
+            query_embedding = model.encode([chunk])
+            
+            # Only process recommendations if there's high similarity with products
+            product_distances, _ = product_recommender.index.search(query_embedding, 1)
+            if product_distances[0][0] < 1.5:  # Same threshold as real-time
+                recommendations = product_recommender.get_recommendations(chunk)
+                if recommendations:
+                    print(f"Recommendations for chunk: '{chunk}'")
+                    for idx, rec in enumerate(recommendations, 1):
+                        print(f"{idx}. {rec}")
+            
+            # Only process objections if there's high similarity with objections
+            objection_distances, _ = objection_handler.index.search(query_embedding, 1)
+            if objection_distances[0][0] < 1.5:  # Same threshold as real-time
+                objection_responses = objection_handler.handle_objection(chunk)
+                if objection_responses:
+                    for response in objection_responses:
+                        print(f"Objection Response: {response}")
 
     # Determine overall sentiment
     overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else "NEGATIVE"
