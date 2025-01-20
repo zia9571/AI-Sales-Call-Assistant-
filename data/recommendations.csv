@@ -1,0 +1,51 @@
+id,product_uid,product_title,product_description,search_term,relevance,name,value
+1,10001,Casual White Shirt,"A comfortable white cotton shirt, perfect for casual wear.","shirts, casual, cotton",0.9,Color,White
+2,10002,Formal Black Shirt,A sleek black shirt suitable for formal events.,"shirts, formal, black",0.95,Color,Black
+3,10003,Blue Denim Jacket,A classic blue denim jacket for any season.,"jackets, denim, blue",0.85,Material,Denim
+4,10004,Red Floral Dress,A beautiful red dress with floral prints.,"dresses, floral, red",0.9,Pattern,Floral
+5,10005,Slim Fit Jeans,Stylish slim fit jeans available in various sizes.,"jeans, slim fit, denim",0.88,Fit,Slim Fit
+6,10006,Classic Black Blazer,A classic black blazer for business meetings.,"blazers, formal, black",0.92,Color,Black
+7,10007,Summer Yellow T-shirt,Lightweight yellow t-shirt ideal for summer.,"t-shirts, summer, yellow",0.86,Fabric,Cotton
+8,10008,Winter Woolen Scarf,A cozy woolen scarf to keep you warm during winters.,"scarves, woolen, winter",0.91,Material,Wool
+9,10009,Brown Leather Boots,Durable brown leather boots for outdoor activities.,"boots, leather, brown",0.93,Material,Leather
+10,10010,Black High Heels,Elegant black high heels for parties.,"heels, black, party",0.89,Heel Type,Stiletto
+11,10011,Cotton Pajama Set,A soft cotton pajama set for comfortable sleep.,"pajamas, sleepwear",0.87,Fabric,Cotton
+12,10012,Beige Chinos,Stylish beige chinos for casual outings.,"chinos, casual, beige",0.9,Color,Beige
+13,10013,Green Maxi Skirt,A flowing green maxi skirt for summer.,"skirts, maxi, green",0.88,Length,Maxi
+14,10014,Grey Woolen Coat,A warm woolen coat for harsh winters.,"coats, woolen, grey",0.92,Material,Wool
+15,10015,Black Leather Handbag,A versatile black leather handbag.,"handbags, leather, black",0.93,Material,Leather
+16,10016,Pink Woolen Sweater,A cozy pink sweater made of high-quality wool.,"sweaters, woolen, pink",0.9,Color,Pink
+17,10017,White Ankle Socks,Comfortable white ankle socks for daily use.,"socks, white, cotton",0.85,Length,Ankle
+18,10018,Grey Joggers,Stretchy grey joggers for workouts or lounging.,"joggers, workout, grey",0.88,Fabric,Polyester
+19,10019,Red Cotton Kurti,A traditional red kurti made from soft cotton.,"kurtis, red, cotton",0.9,Fabric,Cotton
+20,10020,Blue Canvas Sneakers,Casual blue sneakers made from durable canvas.,"sneakers, canvas, blue",0.9,Material,Canvas
+21,10021,Black Track Jacket,A sporty black track jacket with zip closure.,"jackets, track, black",0.89,Closure,Zipper
+22,10022,Beige Summer Hat,A stylish beige hat to protect you from the sun.,"hats, summer, beige",0.9,Material,Straw
+23,10023,Silver Hoop Earrings,Simple silver hoop earrings for daily wear.,"earrings, silver, hoops",0.91,Material,Silver
+24,10024,Brown Leather Wallet,A compact brown leather wallet for men.,"wallets, leather, brown",0.92,Material,Leather
+25,10025,Black Aviator Sunglasses,Trendy black aviator sunglasses with UV protection.,"sunglasses, black",0.93,Frame,Aviator
+26,10026,Yellow Raincoat,Waterproof yellow raincoat with a hood.,"raincoats, yellow, waterproof",0.9,Material,Nylon
+27,10027,Green Camouflage Backpack,A durable backpack with a green camouflage design.,"backpacks, green, camouflage",0.91,Capacity,20L
+28,10028,Black Running Shoes,Lightweight black running shoes for marathon training.,"shoes, running, black",0.93,Sole Type,Rubber
+29,10029,Navy Blue Blouse,A chic navy blue blouse for office wear.,"blouses, blue, office",0.88,Color,Navy Blue
+30,10030,Orange Tank Top,A breathable orange tank top for summer workouts.,"tops, tank, orange",0.86,Fabric,Spandex
+31,10031,Black Velvet Dress,A luxurious black velvet dress perfect for evening parties.,"dresses, velvet, black",0.92,Fabric,Velvet
+32,10032,White Denim Skirt,A stylish white denim skirt with frayed edges.,"skirts, denim, white",0.88,Color,White
+33,10033,Brown Suede Loafers,Comfortable brown suede loafers for everyday use.,"loafers, suede, brown",0.9,Material,Suede
+34,10034,Floral Print Maxi Dress,A beautiful floral print maxi dress for casual or formal events.,"dresses, floral, maxi",0.91,Pattern,Floral
+35,10035,Gray Wool Sweater,"A cozy gray wool sweater, perfect for colder months.","sweaters, wool, gray",0.93,Color,Gray
+36,10036,White Canvas Sneakers,Classic white canvas sneakers with rubber sole.,"sneakers, canvas, white",0.86,Material,Canvas
+37,10037,Brown Leather Belt,A premium brown leather belt with an adjustable clasp.,"belts, leather, brown",0.92,Material,Leather
+38,10038,Purple Satin Blouse,A delicate purple satin blouse for formal occasions.,"blouses, satin, purple",0.88,Color,Purple
+39,10039,Yellow Floral Bikini,A vibrant yellow floral bikini set for summer.,"bikinis, floral, yellow",0.89,Color,Yellow
+40,10040,Black Faux Leather Jacket,A chic black faux leather jacket with a slim fit.,"jackets, leather, black",0.91,Material,Faux Leather
+41,10041,Red Wool Scarf,A thick red wool scarf to keep you warm during winter.,"scarves, wool, red",0.9,Color,Red
+42,10042,Charcoal Gray Sweatpants,Soft charcoal gray sweatpants for lounging.,"sweatpants, gray, casual",0.87,Color,Charcoal
+43,10043,Black Lace Bra,A sexy black lace bra with intricate patterns.,"bras, lace, black",0.9,Color,Black
+44,10044,Brown Leather Jacket,Stylish brown leather jacket with a zip closure.,"jackets, leather, brown",0.94,Material,Leather
+45,10045,Blue Velvet Shoes,Stunning blue velvet shoes with a comfortable heel.,"shoes, velvet, blue",0.9,Material,Velvet
+46,10046,Pink Satin Robe,A luxurious pink satin robe for ultimate comfort.,"robes, satin, pink",0.92,Color,Pink
+47,10047,Red Leather Crossbody Bag,A trendy red leather crossbody bag for everyday use.,"bags, leather, red",0.93,Material,Leather
+48,10048,White V-neck T-shirt,A comfortable white V-neck t-shirt made from cotton.,"t-shirts, cotton, white",0.86,Neckline,V-neck
+49,10049,Navy Blue Pencil Skirt,A professional navy blue pencil skirt for office wear.,"skirts, pencil, navy",0.88,Color,Navy Blue
+50,10050,Beige Striped Sundress,A light and airy beige striped sundress for hot weather.,"sundresses, stripes, beige",0.89,Pattern,Stripes
