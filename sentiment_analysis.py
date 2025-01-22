@@ -51,18 +51,42 @@ stream = audio.open(format=pyaudio.paInt16,
 stream.start_stream()
 
 # Function to analyze sentiment
+def preprocess_text(text):
+    """Preprocess text for better sentiment analysis."""
+    # Strip whitespace and convert to lowercase
+    processed = text.strip().lower()
+    return processed
+
+def preprocess_text(text):
+    """Preprocess text for better sentiment analysis."""
+    return text.strip().lower()
+
 def analyze_sentiment(text):
     """Analyze sentiment of the text using Hugging Face model."""
-    result = sentiment_analyzer(text)[0]
-    sentiment_map = {
-        "LABEL_0": "VERY NEGATIVE",
-        "LABEL_1": "NEGATIVE",
-        "LABEL_2": "NEUTRAL",
-        "LABEL_3": "POSITIVE",
-        "LABEL_4": "VERY POSITIVE"
-    }
-    sentiment = sentiment_map.get(result['label'], "NEUTRAL")
-    return sentiment, result['score']
+    try:
+        if not text.strip():
+            return "NEUTRAL", 0.0
+        
+        processed_text = preprocess_text(text)
+        result = sentiment_analyzer(processed_text)[0]
+        
+        print(f"Sentiment Analysis Result: {result}")
+        
+        # Map raw labels to sentiments
+        sentiment_map = {
+            'Very Negative': "NEGATIVE",
+            'Negative': "NEGATIVE",
+            'Neutral': "NEUTRAL",
+            'Positive': "POSITIVE",
+            'Very Positive': "POSITIVE"
+        }
+        
+        sentiment = sentiment_map.get(result['label'], "NEUTRAL")
+        return sentiment, result['score']
+        
+    except Exception as e:
+        print(f"Error in sentiment analysis: {e}")
+        return "NEUTRAL", 0.5
 
 def transcribe_with_chunks(objections_dict):
     """Perform real-time transcription with sentiment analysis."""
@@ -112,7 +136,6 @@ def transcribe_with_chunks(objections_dict):
                             # Always process sentiment
                             sentiment, score = analyze_sentiment(chunk_text)
                             chunks.append((chunk_text, sentiment, score))
-                            print(f"\nChunk: {chunk_text} | Sentiment: {sentiment} | Score: {score}")
 
                             # Get objection responses and check similarity score
                             query_embedding = model.encode([chunk_text])
