@@ -2,7 +2,7 @@ from sentiment_analysis import transcribe_with_chunks
 from google_sheets import store_data_in_sheet
 from env_setup import config
 from product_recommender import ProductRecommender
-from objection_handler import ObjectionHandler, load_objections  # Ensure load_objections is imported
+from objection_handler import ObjectionHandler, load_objections
 from sentence_transformers import SentenceTransformer
 
 def main():
@@ -20,12 +20,17 @@ def main():
 
     total_text = ""
     sentiment_scores = []
-    processed_chunks = []  # Store chunks with their real-time processing results
 
     for chunk, sentiment, score in transcribed_chunks:
         if chunk.strip():  
             total_text += chunk + " "
-            sentiment_scores.append(score if sentiment == "POSITIVE" else -score)
+            # Update sentiment scoring logic
+            if sentiment == "POSITIVE" or sentiment == "VERY POSITIVE":
+                sentiment_scores.append(score)
+            elif sentiment == "NEGATIVE" or sentiment == "VERY NEGATIVE":
+                sentiment_scores.append(-score)
+            else:
+                sentiment_scores.append(0)  
 
             # Get embeddings for similarity check
             query_embedding = model.encode([chunk])
@@ -48,12 +53,15 @@ def main():
                         print(f"Objection Response: {response}")
 
     # Determine overall sentiment
-    overall_sentiment = "POSITIVE" if sum(sentiment_scores) > 0 else "NEGATIVE"
+    if sentiment_scores:  # Check if sentiment_scores is not empty
+        average_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+        overall_sentiment = "POSITIVE" if average_sentiment > 0 else "NEGATIVE" if average_sentiment < 0 else "NEUTRAL"
+    else:
+        overall_sentiment = "NEUTRAL"
+
     print(f"Overall Sentiment: {overall_sentiment}")
-
-    # Generate a summary of the conversation
     print(f"Conversation Summary: {total_text.strip()}")
-
+    
     # Store data in Google Sheets
     store_data_in_sheet(config["google_sheet_id"], transcribed_chunks, total_text.strip(), overall_sentiment)
 
