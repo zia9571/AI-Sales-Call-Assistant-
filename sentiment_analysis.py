@@ -16,8 +16,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize the ProductRecommender
-product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
-
 # Hugging Face API setup
 huggingface_api_key = config["huggingface_api_key"]
 login(token=huggingface_api_key)
