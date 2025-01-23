@@ -1,177 +1,270 @@
-import os
-import json
-import time
-import pyaudio
-from vosk import Model, KaldiRecognizer
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-from huggingface_hub import login
+import speech_recognition as sr
+from sentiment_analysis import analyze_sentiment
 from product_recommender import ProductRecommender
-from objection_handler import load_objections, check_objections  # Ensure check_objections is imported
 from objection_handler import ObjectionHandler
-from env_setup import config
+from google_sheets import fetch_call_data, store_data_in_sheet
 from sentence_transformers import SentenceTransformer
-from dotenv import load_dotenv
+from env_setup import config
+import re
+import uuid
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objs as go
+import streamlit as st
 
-# Load environment variables
-load_dotenv()
-
-# Initialize the ProductRecommender
+# Initialize components
 product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+objection_handler = ObjectionHandler(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Hugging Face API setup
-huggingface_api_key = config["huggingface_api_key"]
-login(token=huggingface_api_key)
+def generate_comprehensive_summary(chunks):
+    """
+    Generate a comprehensive summary from conversation chunks
+    """
+    # Extract full text from chunks
+    full_text = " ".join([chunk[0] for chunk in chunks])
+    
+    # Perform basic analysis
+    total_chunks = len(chunks)
+    sentiments = [chunk[1] for chunk in chunks]
+    
+    # Determine overall conversation context
+    context_keywords = {
+        'product_inquiry': ['dress', 'product', 'price', 'stock'],
+        'pricing': ['cost', 'price', 'budget'],
+        'negotiation': ['installment', 'payment', 'manage']
+    }
+    
+    # Detect conversation themes
+    themes = []
+    for keyword_type, keywords in context_keywords.items():
+        if any(keyword.lower() in full_text.lower() for keyword in keywords):
+            themes.append(keyword_type)
+    
+    # Basic sentiment analysis
+    positive_count = sentiments.count('POSITIVE')
+    negative_count = sentiments.count('NEGATIVE')
+    neutral_count = sentiments.count('NEUTRAL')
+    
+    # Key interaction highlights
+    key_interactions = []
+    for chunk in chunks:
+        if any(keyword.lower() in chunk[0].lower() for keyword in ['price', 'dress', 'stock', 'installment']):
+            key_interactions.append(chunk[0])
+    
+    # Construct summary
+    summary = f"Conversation Summary:\n"
+    
+    # Context and themes
+    if 'product_inquiry' in themes:
+        summary += "• Customer initiated a product inquiry about items.\n"
+    
+    if 'pricing' in themes:
+        summary += "• Price and budget considerations were discussed.\n"
+    
+    if 'negotiation' in themes:
+        summary += "• Customer and seller explored flexible payment options.\n"
+    
+    # Sentiment insights
+    summary += f"\nConversation Sentiment:\n"
+    summary += f"• Positive Interactions: {positive_count}\n"
+    summary += f"• Negative Interactions: {negative_count}\n"
+    summary += f"• Neutral Interactions: {neutral_count}\n"
+    
+    # Key highlights
+    summary += "\nKey Conversation Points:\n"
+    for interaction in key_interactions[:3]:  # Limit to top 3 key points
+        summary += f"• {interaction}\n"
+    
+    # Conversation outcome
+    if positive_count > negative_count:
+        summary += "\nOutcome: Constructive and potentially successful interaction."
+    elif negative_count > positive_count:
+        summary += "\nOutcome: Interaction may require further follow-up."
+    else:
+        summary += "\nOutcome: Neutral interaction with potential for future engagement."
+    
+    return summary
 
-# Sentiment Analysis Model
-model_name = "tabularisai/multilingual-sentiment-analysis"
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-sentiment_analyzer = pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+def is_valid_input(text):
+    text = text.strip().lower()
+    if len(text) < 3 or re.match(r'^[a-zA-Z\s]*$', text) is None:
+        return False
+    return True
 
-# Vosk Speech Recognition Model
-vosk_model_path = config["vosk_model_path"]
+def is_relevant_sentiment(sentiment_score):
+    return sentiment_score > 0.4
 
-if not vosk_model_path:
-    raise ValueError("Error: vosk_model_path is not set in the .env file.")
+def calculate_overall_sentiment(sentiment_scores):
+    if sentiment_scores:
+        average_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+        overall_sentiment = (
+            "POSITIVE" if average_sentiment > 0 else
+            "NEGATIVE" if average_sentiment < 0 else
+            "NEUTRAL"
+        )
+    else:
+        overall_sentiment = "NEUTRAL"
+    return overall_sentiment
 
-try:
-    vosk_model = Model(vosk_model_path)
-    print("Vosk model loaded successfully.")
-except Exception as e:
-    raise ValueError(f"Failed to load Vosk model: {e}")
+def real_time_analysis():
+    recognizer = sr.Recognizer()
 
-recognizer = KaldiRecognizer(vosk_model, 16000)
-audio = pyaudio.PyAudio()
+    # Allow user to upload an audio file
+    uploaded_file = st.file_uploader("Upload an audio file for analysis", type=["wav", "mp3", "flac"])
 
-stream = audio.open(format=pyaudio.paInt16,
-                    channels=1,
-                    rate=16000,
-                    input=True,
-                    frames_per_buffer=4000)
-stream.start_stream()
+    if uploaded_file is not None:
+        audio_file_path = "/tmp/uploaded_audio.wav"
+        with open(audio_file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-# Function to analyze sentiment
-def preprocess_text(text):
-    """Preprocess text for better sentiment analysis."""
-    # Strip whitespace and convert to lowercase
-    processed = text.strip().lower()
-    return processed
+        st.info("Processing your audio file...")
 
-def preprocess_text(text):
-    """Preprocess text for better sentiment analysis."""
-    return text.strip().lower()
+        sentiment_scores = []
+        transcribed_chunks = []
+        total_text = ""
 
-def analyze_sentiment(text):
-    """Analyze sentiment of the text using Hugging Face model."""
-    try:
-        if not text.strip():
-            return "NEUTRAL", 0.0
-        
-        processed_text = preprocess_text(text)
-        result = sentiment_analyzer(processed_text)[0]
-        
-        print(f"Sentiment Analysis Result: {result}")
-        
-        # Map raw labels to sentiments
-        sentiment_map = {
-            'Very Negative': "NEGATIVE",
-            'Negative': "NEGATIVE",
-            'Neutral': "NEUTRAL",
-            'Positive': "POSITIVE",
-            'Very Positive': "POSITIVE"
-        }
-        
-        sentiment = sentiment_map.get(result['label'], "NEUTRAL")
-        return sentiment, result['score']
-        
-    except Exception as e:
-        print(f"Error in sentiment analysis: {e}")
-        return "NEUTRAL", 0.5
+        try:
+            # Use recognizer to process the uploaded audio file
+            with sr.AudioFile(audio_file_path) as source:
+                audio = recognizer.record(source)
 
-def transcribe_with_chunks(objections_dict):
-    """Perform real-time transcription with sentiment analysis."""
-    print("Say 'start listening' to begin transcription. Say 'stop listening' to stop.")
-    is_listening = False
-    chunks = []
-    current_chunk = []
-    chunk_start_time = time.time()
+            try:
+                st.write("Recognizing...")
+                text = recognizer.recognize_google(audio)
+                st.write(f"*Recognized Text:* {text}")
 
-    # Initialize handlers with semantic search capabilities
-    objection_handler = ObjectionHandler(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
-    product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+                if 'stop' in text.lower():
+                    st.write("Stopping real-time analysis...")
 
-    # Load the embeddings model once
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+                # Append to the total conversation
+                total_text += text + " "
+                sentiment, score = analyze_sentiment(text)
+                sentiment_scores.append(score)
 
-    try:
-        while True:
-            data = stream.read(4000, exception_on_overflow=False)
+                # Handle objection
+                objection_response = handle_objection(text)
 
-            if recognizer.AcceptWaveform(data):
-                result = recognizer.Result()
-                text = json.loads(result)["text"]
+                # Get product recommendation
+                recommendations = []
+                if is_valid_input(text) and is_relevant_sentiment(score):
+                    query_embedding = model.encode([text])
+                    distances, indices = product_recommender.index.search(query_embedding, 1)
 
-                if "start listening" in text.lower():
-                    is_listening = True
-                    print("Listening started. Speak into the microphone.")
-                    continue
-                elif "stop listening" in text.lower():
-                    is_listening = False
-                    print("Listening stopped.")
-                    if current_chunk:
-                        chunk_text = " ".join(current_chunk)
-                        sentiment, score = analyze_sentiment(chunk_text)
-                        chunks.append((chunk_text, sentiment, score))
-                        current_chunk = []
-                    continue
+                    if distances[0][0] < 1.5:  # Similarity threshold
+                        recommendations = product_recommender.get_recommendations(text)
 
-                if is_listening and text.strip():
-                    print(f"Transcription: {text}")
-                    current_chunk.append(text)
+                transcribed_chunks.append((text, sentiment, score))
 
-                    if time.time() - chunk_start_time > 3:
-                        if current_chunk:
-                            chunk_text = " ".join(current_chunk)
-                            
-                            # Always process sentiment
-                            sentiment, score = analyze_sentiment(chunk_text)
-                            chunks.append((chunk_text, sentiment, score))
+                st.write(f"*Sentiment:* {sentiment} (Score: {score})")
+                st.write(f"*Objection Response:* {objection_response}")
 
-                            # Get objection responses and check similarity score
-                            query_embedding = model.encode([chunk_text])
-                            distances, indices = objection_handler.index.search(query_embedding, 1)
-                            
-                            # If similarity is high enough, show objection response
-                            if distances[0][0] < 1.5:  # Threshold for similarity
-                                responses = objection_handler.handle_objection(chunk_text)
-                                if responses:
-                                    print("\nSuggested Response:")
-                                    for response in responses:
-                                        print(f"→ {response}")
-                            
-                            # Get product recommendations and check similarity score
-                            distances, indices = product_recommender.index.search(query_embedding, 1)
-                            
-                            # If similarity is high enough, show recommendations
-                            if distances[0][0] < 1.5:  # Threshold for similarity
-                                recommendations = product_recommender.get_recommendations(chunk_text)
-                                if recommendations:
-                                    print(f"\nRecommendations for this response:")
-                                    for idx, rec in enumerate(recommendations, 1):
-                                        print(f"{idx}. {rec}")
-                            
-                            print("\n")
-                            current_chunk = []
-                            chunk_start_time = time.time()
+                if recommendations:
+                    st.write("*Product Recommendations:*")
+                    for rec in recommendations:
+                        st.write(rec)
 
-    except KeyboardInterrupt:
-        print("\nExiting...")
-        stream.stop_stream()
+            except sr.UnknownValueError:
+                st.error("Speech Recognition could not understand the audio.")
+            except sr.RequestError as e:
+                st.error(f"Error with the Speech Recognition service: {e}")
+            except Exception as e:
+                st.error(f"Error during processing: {e}")
 
-    return chunks
+            # After conversation ends, calculate and display overall sentiment and summary
+            overall_sentiment = calculate_overall_sentiment(sentiment_scores)
+            call_summary = generate_comprehensive_summary(transcribed_chunks)
+
+            st.subheader("Conversation Summary:")
+            st.write(total_text.strip())
+            st.subheader("Overall Sentiment:")
+            st.write(overall_sentiment)
+
+            # Store data in Google Sheets
+            store_data_in_sheet(
+                config["google_sheet_id"], 
+                transcribed_chunks, 
+                call_summary, 
+                overall_sentiment
+            )
+            st.success("Conversation data stored successfully in Google Sheets!")
+
+        except Exception as e:
+            st.error(f"Error in real-time analysis: {e}")
+
+def handle_objection(text):
+    query_embedding = model.encode([text])
+    distances, indices = objection_handler.index.search(query_embedding, 1)
+    if distances[0][0] < 1.5:  # Adjust similarity threshold as needed
+        responses = objection_handler.handle_objection(text)
+        return "\n".join(responses) if responses else "No objection response found."
+    return "No objection response found."
+
+def run_app():
+    st.set_page_config(page_title="Sales Call Assistant", layout="wide")
+    st.title("AI Sales Call Assistant")
+
+    st.sidebar.title("Navigation")
+    app_mode = st.sidebar.radio("Choose a mode:", ["Real-Time Call Analysis", "Dashboard"])
+
+    if app_mode == "Real-Time Call Analysis":
+        st.header("Real-Time Sales Call Analysis")
+        if st.button("Start Analysis"):
+            real_time_analysis()
+
+    elif app_mode == "Dashboard":
+        st.header("Call Summaries and Sentiment Analysis")
+        try:
+            data = fetch_call_data(config["google_sheet_id"])
+            if data.empty:
+                st.warning("No data available in the Google Sheet.")
+            else:
+                # Sentiment Visualizations
+                sentiment_counts = data['Sentiment'].value_counts()
+
+                # Pie Chart
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.subheader("Sentiment Distribution")
+                    fig_pie = px.pie(
+                        values=sentiment_counts.values, 
+                        names=sentiment_counts.index, 
+                        title='Call Sentiment Breakdown',
+                        color_discrete_map={
+                            'POSITIVE': 'green', 
+                            'NEGATIVE': 'red', 
+                            'NEUTRAL': 'blue'
+                        }
+                    )
+                    st.plotly_chart(fig_pie)
+
+                # Bar Chart
+                with col2:
+                    st.subheader("Sentiment Counts")
+                    fig_bar = px.bar(
+                        x=sentiment_counts.index, 
+                        y=sentiment_counts.values, 
+                        title='Number of Calls by Sentiment',
+                        labels={'x': 'Sentiment', 'y': 'Number of Calls'},
+                        color=sentiment_counts.index,
+                        color_discrete_map={
+                            'POSITIVE': 'green', 
+                            'NEGATIVE': 'red', 
+                            'NEUTRAL': 'blue'
+                        }
+                    )
+                    st.plotly_chart(fig_bar)
+
+                # Existing Call Details Section
+                st.subheader("All Calls")
+                display_data = data.copy()
+                display_data['Summary Preview'] = display_data['Summary'].str[:100] + '...'
+                st.dataframe(display_data[['Call ID', 'Chunk Count', 'Sentiment', 'Summary Preview']])
+
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
 
 if __name__ == "__main__":
-    objections_file_path = r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv"
-    objections_dict = load_objections(objections_file_path)
-    transcribed_chunks = transcribe_with_chunks(objections_dict)
-    print("Final transcriptions and sentiments:", transcribed_chunks)
+    run_app()
