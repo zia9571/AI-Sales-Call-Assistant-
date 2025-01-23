@@ -1,7 +1,7 @@
-import os 
+import os
 import json
 import time
-import speech_recognition as sr
+import pyaudio
 from vosk import Model, KaldiRecognizer
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 from huggingface_hub import login
@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize the ProductRecommender
+product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+
 # Hugging Face API setup
 huggingface_api_key = config["huggingface_api_key"]
 login(token=huggingface_api_key)
@@ -39,12 +41,22 @@ except Exception as e:
     raise ValueError(f"Failed to load Vosk model: {e}")
 
 recognizer = KaldiRecognizer(vosk_model, 16000)
+audio = pyaudio.PyAudio()
 
-# Initialize speech recognition
-speech_recognizer = sr.Recognizer()
-microphone = sr.Microphone()
+stream = audio.open(format=pyaudio.paInt16,
+                    channels=1,
+                    rate=16000,
+                    input=True,
+                    frames_per_buffer=4000)
+stream.start_stream()
 
 # Function to analyze sentiment
+def preprocess_text(text):
+    """Preprocess text for better sentiment analysis."""
+    # Strip whitespace and convert to lowercase
+    processed = text.strip().lower()
+    return processed
+
 def preprocess_text(text):
     """Preprocess text for better sentiment analysis."""
     return text.strip().lower()
@@ -92,78 +104,69 @@ def transcribe_with_chunks(objections_dict):
     model = SentenceTransformer('all-MiniLM-L6-v2')
 
     try:
-        with microphone as source:
-            print("Adjusting for ambient noise...")
-            speech_recognizer.adjust_for_ambient_noise(source)
-            while True:
-                print("Listening...")
+        while True:
+            data = stream.read(4000, exception_on_overflow=False)
 
-                # Listen for audio and capture it in real-time
-                audio = speech_recognizer.listen(source, timeout=5)
-                try:
-                    text = speech_recognizer.recognize_google(audio)
-                    print(f"Recognized Speech: {text}")
+            if recognizer.AcceptWaveform(data):
+                result = recognizer.Result()
+                text = json.loads(result)["text"]
 
-                    if "start listening" in text.lower():
-                        is_listening = True
-                        print("Listening started. Speak into the microphone.")
-                        continue
-                    elif "stop listening" in text.lower():
-                        is_listening = False
-                        print("Listening stopped.")
+                if "start listening" in text.lower():
+                    is_listening = True
+                    print("Listening started. Speak into the microphone.")
+                    continue
+                elif "stop listening" in text.lower():
+                    is_listening = False
+                    print("Listening stopped.")
+                    if current_chunk:
+                        chunk_text = " ".join(current_chunk)
+                        sentiment, score = analyze_sentiment(chunk_text)
+                        chunks.append((chunk_text, sentiment, score))
+                        current_chunk = []
+                    continue
+
+                if is_listening and text.strip():
+                    print(f"Transcription: {text}")
+                    current_chunk.append(text)
+
+                    if time.time() - chunk_start_time > 3:
                         if current_chunk:
                             chunk_text = " ".join(current_chunk)
+                            
+                            # Always process sentiment
                             sentiment, score = analyze_sentiment(chunk_text)
                             chunks.append((chunk_text, sentiment, score))
+
+                            # Get objection responses and check similarity score
+                            query_embedding = model.encode([chunk_text])
+                            distances, indices = objection_handler.index.search(query_embedding, 1)
+                            
+                            # If similarity is high enough, show objection response
+                            if distances[0][0] < 1.5:  # Threshold for similarity
+                                responses = objection_handler.handle_objection(chunk_text)
+                                if responses:
+                                    print("\nSuggested Response:")
+                                    for response in responses:
+                                        print(f"→ {response}")
+                            
+                            # Get product recommendations and check similarity score
+                            distances, indices = product_recommender.index.search(query_embedding, 1)
+                            
+                            # If similarity is high enough, show recommendations
+                            if distances[0][0] < 1.5:  # Threshold for similarity
+                                recommendations = product_recommender.get_recommendations(chunk_text)
+                                if recommendations:
+                                    print(f"\nRecommendations for this response:")
+                                    for idx, rec in enumerate(recommendations, 1):
+                                        print(f"{idx}. {rec}")
+                            
+                            print("\n")
                             current_chunk = []
-                        continue
-
-                    if is_listening and text.strip():
-                        print(f"Transcription: {text}")
-                        current_chunk.append(text)
-
-                        if time.time() - chunk_start_time > 3:
-                            if current_chunk:
-                                chunk_text = " ".join(current_chunk)
-                                
-                                # Always process sentiment
-                                sentiment, score = analyze_sentiment(chunk_text)
-                                chunks.append((chunk_text, sentiment, score))
-
-                                # Get objection responses and check similarity score
-                                query_embedding = model.encode([chunk_text])
-                                distances, indices = objection_handler.index.search(query_embedding, 1)
-                                
-                                # If similarity is high enough, show objection response
-                                if distances[0][0] < 1.5:  # Threshold for similarity
-                                    responses = objection_handler.handle_objection(chunk_text)
-                                    if responses:
-                                        print("\nSuggested Response:")
-                                        for response in responses:
-                                            print(f"→ {response}")
-                                
-                                # Get product recommendations and check similarity score
-                                distances, indices = product_recommender.index.search(query_embedding, 1)
-                                
-                                # If similarity is high enough, show recommendations
-                                if distances[0][0] < 1.5:  # Threshold for similarity
-                                    recommendations = product_recommender.get_recommendations(chunk_text)
-                                    if recommendations:
-                                        print(f"\nRecommendations for this response:")
-                                        for idx, rec in enumerate(recommendations, 1):
-                                            print(f"{idx}. {rec}")
-                                
-                                print("\n")
-                                current_chunk = []
-                                chunk_start_time = time.time()
-
-                except sr.UnknownValueError:
-                    print("Sorry, I couldn't understand that.")
-                except sr.RequestError:
-                    print("Could not request results from Google Speech Recognition service.")
+                            chunk_start_time = time.time()
 
     except KeyboardInterrupt:
         print("\nExiting...")
+        stream.stop_stream()
 
     return chunks
 
