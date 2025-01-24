@@ -43,13 +43,6 @@ def store_data_in_sheet(sheet_id, chunks, summary, overall_sentiment):
         print(f"Error updating Google Sheets: {e}")
 
 def fetch_call_data(sheet_id, sheet_range="Sheet1!A1:E"):
-    """
-    Fetches data from the specified Google Sheet and returns a pandas DataFrame.
-
-    :param sheet_id: The ID of the Google Sheet to fetch data from.
-    :param sheet_range: The range in A1 notation to fetch data from.
-    :return: pandas DataFrame with the sheet data.
-    """
     try:
         creds = authenticate_google_account()
         service = build('sheets', 'v4', credentials=creds)
