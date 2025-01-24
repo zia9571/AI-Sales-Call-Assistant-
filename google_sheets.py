@@ -51,35 +51,27 @@ def fetch_call_data(sheet_id, sheet_range="Sheet1!A1:E"):
     :return: pandas DataFrame with the sheet data.
     """
     try:
-        # Authenticate and get credentials
         creds = authenticate_google_account()
         service = build('sheets', 'v4', credentials=creds)
         sheet = service.spreadsheets()
 
-        # Fetch the data
         result = sheet.values().get(
             spreadsheetId=sheet_id,
             range=sheet_range
         ).execute()
         
-        # Get the rows
         rows = result.get("values", [])
         
-        # If rows exist, convert to DataFrame
         if rows:
-            # Use the first row as column headers
             headers = rows[0]
             data = rows[1:]
             
-            # Create DataFrame
             df = pd.DataFrame(data, columns=headers)
             
             return df
         else:
-            # Return an empty DataFrame if no data
             return pd.DataFrame()
     
     except Exception as e:
         print(f"Error fetching data from Google Sheets: {e}")
-        # Return an empty DataFrame in case of error
         return pd.DataFrame()
