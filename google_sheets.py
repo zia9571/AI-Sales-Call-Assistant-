@@ -2,6 +2,7 @@ import uuid
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from env_setup import config
+import pandas as pd
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -40,3 +41,45 @@ def store_data_in_sheet(sheet_id, chunks, summary, overall_sentiment):
         print(f"{result.get('updates').get('updatedCells')} cells updated in Google Sheets.")
     except Exception as e:
         print(f"Error updating Google Sheets: {e}")
+
+def fetch_call_data(sheet_id, sheet_range="Sheet1!A1:E"):
+    """
+    Fetches data from the specified Google Sheet and returns a pandas DataFrame.
+
+    :param sheet_id: The ID of the Google Sheet to fetch data from.
+    :param sheet_range: The range in A1 notation to fetch data from.
+    :return: pandas DataFrame with the sheet data.
+    """
+    try:
+        # Authenticate and get credentials
+        creds = authenticate_google_account()
+        service = build('sheets', 'v4', credentials=creds)
+        sheet = service.spreadsheets()
+
+        # Fetch the data
+        result = sheet.values().get(
+            spreadsheetId=sheet_id,
+            range=sheet_range
+        ).execute()
+        
+        # Get the rows
+        rows = result.get("values", [])
+        
+        # If rows exist, convert to DataFrame
+        if rows:
+            # Use the first row as column headers
+            headers = rows[0]
+            data = rows[1:]
+            
+            # Create DataFrame
+            df = pd.DataFrame(data, columns=headers)
+            
+            return df
+        else:
+            # Return an empty DataFrame if no data
+            return pd.DataFrame()
+    
+    except Exception as e:
+        print(f"Error fetching data from Google Sheets: {e}")
+        # Return an empty DataFrame in case of error
+        return pd.DataFrame()
