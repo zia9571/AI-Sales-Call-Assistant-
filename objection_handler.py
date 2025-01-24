@@ -3,7 +3,6 @@ from sentence_transformers import SentenceTransformer
 import faiss
 
 def load_objections(file_path):
-    """Load objections from a CSV file into a dictionary."""
     try:
         objections_df = pd.read_csv(file_path)
         objections_dict = {}
@@ -15,7 +14,6 @@ def load_objections(file_path):
         return {}
 
 def check_objections(text, objections_dict):
-    """Check for objections in the given text and return responses."""
     responses = []
     for objection, response in objections_dict.items():
         if objection.lower() in text.lower():
@@ -31,7 +29,6 @@ class ObjectionHandler:
         self.index.add(self.embeddings)
 
     def handle_objection(self, query, top_n=1):
-        """Handle objections using embeddings."""
         query_embedding = self.model.encode([query])
         distances, indices = self.index.search(query_embedding, top_n)
         responses = []
