@@ -53,7 +53,7 @@ This project develops a real-time AI-powered assistant designed to enhance sales
     ```
 
 4. **Set up the environment:**
-    - Create a `.env` file in the root directory with the following keys:
+   Create a `.env` file in the root directory with the following keys:
       ```
       vosk_model_path=path/to/vosk/model
       huggingface_api_key=your_huggingface_api_key
