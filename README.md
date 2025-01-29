@@ -120,10 +120,6 @@ Adopting a sailboat perspective, the project journey can be summarized as follow
 - Develop advanced analytics and reporting features.
 - Integrate with CRM systems for seamless data management.
 
-## Conclusion
-
-The Real-Time AI Sales Call Assistant project successfully developed an intelligent system that enhances sales conversations by providing real-time transcription, sentiment analysis, product recommendations, and objection handling. This project demonstrates the potential of AI and machine learning to improve sales performance and customer interactions. Future work will focus on enhancing model accuracy, expanding language support, and integrating with CRM systems.
-
 ## References
 
 - Vosk: https://alphacephei.com/vosk/
