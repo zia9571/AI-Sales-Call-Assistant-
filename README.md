@@ -63,7 +63,7 @@ This project develops a real-time AI-powered assistant designed to enhance sales
 
 5. **Run the project:**
     ```bash
-    python main.py
+    streamlit run app.py
     ```
 
 This will start the real-time transcription and sentiment analysis.
