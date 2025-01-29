@@ -11,8 +11,10 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objs as go
-import streamlit as st 
+import streamlit as st
+
+product_titles_df = pd.read_csv(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
+product_titles = product_titles_df['product_title'].tolist()
 
 product_recommender = ProductRecommender(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet2.csv")
 objection_handler = ObjectionHandler(r"C:\Users\shaik\Downloads\Sales Calls Transcriptions - Sheet3.csv")
@@ -178,10 +180,181 @@ def handle_objection(text):
         return "\n".join(responses) if responses else "No objection response found."
     return "No objection response found."
 
+def filter_product_mentions(chunks, product_titles):
+    product_mentions = {}
+    for chunk in chunks:
+        for product in product_titles:
+            if product.lower() in chunk[0].lower():
+                if product in product_mentions:
+                    product_mentions[product] += 1
+                else:
+                    product_mentions[product] = 1
+    return product_mentions
 
 def run_app():
     st.set_page_config(page_title="Sales Call Assistant", layout="wide")
     st.title("AI Sales Call Assistant")
+
+    st.markdown("""
+        <style>
+            /* Header Container Styling */
+            .header-container {
+                background: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Section Container Styling */
+            .section {
+                background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Header Text Styling */
+            .header {
+                font-size: 2.5em;
+                font-weight: 800;
+                text-align: center;
+                background: linear-gradient(120deg, #0D6EFD 0%, #0B5ED7 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin: 0;
+                padding: 10px;
+                letter-spacing: 1px;
+            }
+
+            /* Subheader Styling */
+            .subheader {
+                font-size: 1.8em;
+                font-weight: 600;
+                background: linear-gradient(120deg, #0D6EFD 0%, #0B5ED7 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-top: 20px;
+                margin-bottom: 10px;
+                text-align: left;
+            }
+
+            /* Table Container Styling */
+            .table-container {
+                background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Dark mode adjustments */
+            @media (prefers-color-scheme: dark) {
+                .header-container {
+                    background: linear-gradient(135deg, #212529 0%, #343A40 100%);
+                }
+                
+                .section {
+                    background: linear-gradient(135deg, #212529 0%, #2B3035 100%);
+                }
+                
+                .table-container {
+                    background: linear-gradient(135deg, #212529 0%, #2B3035 100%);
+                }
+                
+                .header {
+                    background: linear-gradient(120deg, #6EA8FE 0%, #9EC5FE 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+                
+                .subheader {
+                    background: linear-gradient(120deg, #6EA8FE 0%, #9EC5FE 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                }
+            }
+
+            /* Button Styling */
+            .stButton > button {
+                background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                transition: all 0.3s ease;
+            }
+
+            .stButton > button:hover {
+                background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            }
+
+            /* Tab Styling */
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 24px;
+                background: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+                padding: 10px;
+                border-radius: 10px;
+            }
+
+            .stTabs [data-baseweb="tab"] {
+                background-color: transparent;
+                border-radius: 4px;
+                color: #1976D2;
+                font-weight: 600;
+                padding: 10px 16px;
+            }
+
+            .stTabs [aria-selected="true"] {
+                background: linear-gradient(120deg, #2196F3 0%, #1976D2 100%);
+                color: white;
+            }
+
+            /* Dark mode tab adjustments */
+            @media (prefers-color-scheme: dark) {
+                .stTabs [data-baseweb="tab-list"] {
+                    background: linear-gradient(135deg, #212529 0%, #343A40 100%);
+                }
+                
+                .stTabs [data-baseweb="tab"] {
+                    color: #82B1FF;
+                }
+                
+                .stTabs [aria-selected="true"] {
+                    background: linear-gradient(120deg, #448AFF 0%, #2979FF 100%);
+                }
+            }
+
+            /* Message Styling */
+            .success {
+                background: linear-gradient(135deg, #43A047 0%, #2E7D32 100%);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
+
+            .error {
+                background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
+
+            .warning {
+                background: linear-gradient(135deg, #FB8C00 0%, #F57C00 100%);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+
 
     st.sidebar.title("Navigation")
     app_mode = st.sidebar.radio("Choose a mode:", ["Real-Time Call Analysis", "Dashboard"])
@@ -199,24 +372,13 @@ def run_app():
                 st.warning("No data available in the Google Sheet.")
             else:
                 sentiment_counts = data['Sentiment'].value_counts()
-                
+
+                product_mentions = filter_product_mentions(data[['Chunk']].values.tolist(), product_titles)
+                product_mentions_df = pd.DataFrame(list(product_mentions.items()), columns=['Product', 'Count'])
+
                 col1, col2 = st.columns(2)
                 with col1:
                     st.subheader("Sentiment Distribution")
-                    fig_pie = px.pie(
-                        values=sentiment_counts.values, 
-                        names=sentiment_counts.index, 
-                        title='Call Sentiment Breakdown',
-                        color_discrete_map={
-                            'POSITIVE': 'green', 
-                            'NEGATIVE': 'red', 
-                            'NEUTRAL': 'blue'
-                        }
-                    )
-                    st.plotly_chart(fig_pie)
-
-                with col2:
-                    st.subheader("Sentiment Counts")
                     fig_bar = px.bar(
                         x=sentiment_counts.index, 
                         y=sentiment_counts.values, 
@@ -230,6 +392,15 @@ def run_app():
                         }
                     )
                     st.plotly_chart(fig_bar)
+
+                with col2:
+                    st.subheader("Most Mentioned Products")
+                    fig_products = px.pie(
+                        values=product_mentions_df['Count'], 
+                        names=product_mentions_df['Product'], 
+                        title='Most Mentioned Products'
+                    )
+                    st.plotly_chart(fig_products)
 
                 st.subheader("All Calls")
                 display_data = data.copy()
@@ -251,12 +422,6 @@ def run_app():
                                  height=200, 
                                  disabled=True)
                     
-                    st.subheader("Conversation Chunks")
-                    for _, row in call_details.iterrows():
-                        if pd.notna(row['Chunk']):  
-                            st.write(f"**Chunk:** {row['Chunk']}")
-                            st.write(f"**Sentiment:** {row['Sentiment']}")
-                            st.write("---") 
                 else:
                     st.error("No details available for the selected Call ID.")
         except Exception as e:
