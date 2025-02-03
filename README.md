@@ -1,7 +1,7 @@
 # Real-Time AI Sales Call Assistant for Enhanced Conversation
 
 ## Overview
-![Logo](data/logo.jpg)
+![Logo](data/logo2.png)
 
 This project develops a real-time AI-powered assistant designed to enhance sales conversations. The assistant analyzes live sales calls, transcribes speech to text, performs sentiment analysis, and generates product recommendations and objection handling responses.
 
